@@ -1,0 +1,28 @@
+type Video {
+  _id: ID!
+  time: String!
+  link: String!
+}
+
+type Query {
+  videos: [Video!]!
+}
+
+input NewVideo {
+  time: String!
+  link: String!
+}
+
+input RefreshTokenInput{
+  token: String!
+}
+
+input Login {
+  password: String!
+}
+
+type Mutation {
+  login(input: Login!): String!
+  refreshToken(input: RefreshTokenInput!): String!
+  createVideo(input: NewVideo!): Video!
+}
