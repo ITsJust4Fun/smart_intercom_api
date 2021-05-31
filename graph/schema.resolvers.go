@@ -6,18 +6,71 @@ package graph
 import (
 	"context"
 	"fmt"
+	"github.com/pkg/errors"
 	"log"
 	"smart_intercom_api/graph/generated"
 	"smart_intercom_api/graph/model"
+	"smart_intercom_api/internal/login"
 	"smart_intercom_api/internal/videos"
+	"smart_intercom_api/pkg/jwt"
 )
 
 func (r *mutationResolver) Login(ctx context.Context, input model.Login) (string, error) {
-	panic(fmt.Errorf("not implemented"))
+	var authLogin login.Login
+	authLogin.Password = input.Password
+	correct := authLogin.Authenticate()
+
+	if !correct {
+		return "", &login.WrongPasswordError{}
+	}
+
+	token, err := jwt.GenerateTokenForUser()
+
+	if err != nil{
+		return "", err
+	}
+
+	return token, nil
+}
+
+func (r *mutationResolver) ChangePassword(ctx context.Context, input model.NewPassword) (string, error) {
+	err := login.ChangePassword(input)
+
+	if err != nil {
+		return "", err
+	}
+
+	var authLogin login.Login
+	authLogin.Password = input.PasswordNew
+	correct := authLogin.Authenticate()
+
+	if !correct {
+		return "", errors.New("can't update password")
+	}
+
+	token, err := jwt.GenerateTokenForUser()
+
+	if err != nil{
+		return "", err
+	}
+
+	return token, nil
 }
 
 func (r *mutationResolver) RefreshToken(ctx context.Context, input model.RefreshTokenInput) (string, error) {
-	panic(fmt.Errorf("not implemented"))
+	err := jwt.ParseTokenForUser(input.Token)
+
+	if err != nil {
+		return "", fmt.Errorf("access denied")
+	}
+
+	token, err := jwt.GenerateTokenForUser()
+
+	if err != nil {
+		return "", err
+	}
+
+	return token, nil
 }
 
 func (r *mutationResolver) CreateVideo(ctx context.Context, input model.NewVideo) (*model.Video, error) {

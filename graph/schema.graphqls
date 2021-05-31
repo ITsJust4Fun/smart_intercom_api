@@ -21,8 +21,14 @@ input Login {
   password: String!
 }
 
+input NewPassword {
+  passwordNew: String!
+  passwordOld: String!
+}
+
 type Mutation {
   login(input: Login!): String!
+  changePassword(input: NewPassword!): String!
   refreshToken(input: RefreshTokenInput!): String!
   createVideo(input: NewVideo!): Video!
 }

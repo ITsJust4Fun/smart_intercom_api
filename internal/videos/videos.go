@@ -60,7 +60,7 @@ func GetAll() ([]Video, error) {
 	result, err := collection.Find(ctx, bson.D{})
 
 	if err != nil {
-		log.Print("Error when finding user", err)
+		log.Print("Error when finding video", err)
 		return nil, err
 	}
 

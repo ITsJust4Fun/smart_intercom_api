@@ -6,6 +6,11 @@ type Login struct {
 	Password string `json:"password"`
 }
 
+type NewPassword struct {
+	PasswordNew string `json:"passwordNew"`
+	PasswordOld string `json:"passwordOld"`
+}
+
 type NewVideo struct {
 	Time string `json:"time"`
 	Link string `json:"link"`

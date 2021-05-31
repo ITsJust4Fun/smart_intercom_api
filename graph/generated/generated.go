@@ -44,9 +44,10 @@ type DirectiveRoot struct {
 
 type ComplexityRoot struct {
 	Mutation struct {
-		CreateVideo  func(childComplexity int, input model.NewVideo) int
-		Login        func(childComplexity int, input model.Login) int
-		RefreshToken func(childComplexity int, input model.RefreshTokenInput) int
+		ChangePassword func(childComplexity int, input model.NewPassword) int
+		CreateVideo    func(childComplexity int, input model.NewVideo) int
+		Login          func(childComplexity int, input model.Login) int
+		RefreshToken   func(childComplexity int, input model.RefreshTokenInput) int
 	}
 
 	Query struct {
@@ -62,6 +63,7 @@ type ComplexityRoot struct {
 
 type MutationResolver interface {
 	Login(ctx context.Context, input model.Login) (string, error)
+	ChangePassword(ctx context.Context, input model.NewPassword) (string, error)
 	RefreshToken(ctx context.Context, input model.RefreshTokenInput) (string, error)
 	CreateVideo(ctx context.Context, input model.NewVideo) (*model.Video, error)
 }
@@ -83,6 +85,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 	ec := executionContext{nil, e}
 	_ = ec
 	switch typeName + "." + field {
+
+	case "Mutation.changePassword":
+		if e.complexity.Mutation.ChangePassword == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_changePassword_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.ChangePassword(childComplexity, args["input"].(model.NewPassword)), true
 
 	case "Mutation.createVideo":
 		if e.complexity.Mutation.CreateVideo == nil {
@@ -235,8 +249,14 @@ input Login {
   password: String!
 }
 
+input NewPassword {
+  passwordNew: String!
+  passwordOld: String!
+}
+
 type Mutation {
   login(input: Login!): String!
+  changePassword(input: NewPassword!): String!
   refreshToken(input: RefreshTokenInput!): String!
   createVideo(input: NewVideo!): Video!
 }
@@ -247,6 +267,21 @@ var parsedSchema = gqlparser.MustLoadSchema(sources...)
 // endregion ************************** generated!.gotpl **************************
 
 // region    ***************************** args.gotpl *****************************
+
+func (ec *executionContext) field_Mutation_changePassword_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 model.NewPassword
+	if tmp, ok := rawArgs["input"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("input"))
+		arg0, err = ec.unmarshalNNewPassword2smart_intercom_apiᚋgraphᚋmodelᚐNewPassword(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["input"] = arg0
+	return args, nil
+}
 
 func (ec *executionContext) field_Mutation_createVideo_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
@@ -372,6 +407,48 @@ func (ec *executionContext) _Mutation_login(ctx context.Context, field graphql.C
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
 		return ec.resolvers.Mutation().Login(rctx, args["input"].(model.Login))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Mutation_changePassword(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   true,
+		IsResolver: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	rawArgs := field.ArgumentMap(ec.Variables)
+	args, err := ec.field_Mutation_changePassword_args(ctx, rawArgs)
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	fc.Args = args
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().ChangePassword(rctx, args["input"].(model.NewPassword))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -1790,6 +1867,34 @@ func (ec *executionContext) unmarshalInputLogin(ctx context.Context, obj interfa
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputNewPassword(ctx context.Context, obj interface{}) (model.NewPassword, error) {
+	var it model.NewPassword
+	var asMap = obj.(map[string]interface{})
+
+	for k, v := range asMap {
+		switch k {
+		case "passwordNew":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("passwordNew"))
+			it.PasswordNew, err = ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "passwordOld":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("passwordOld"))
+			it.PasswordOld, err = ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		}
+	}
+
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputNewVideo(ctx context.Context, obj interface{}) (model.NewVideo, error) {
 	var it model.NewVideo
 	var asMap = obj.(map[string]interface{})
@@ -1863,6 +1968,11 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			out.Values[i] = graphql.MarshalString("Mutation")
 		case "login":
 			out.Values[i] = ec._Mutation_login(ctx, field)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "changePassword":
+			out.Values[i] = ec._Mutation_changePassword(ctx, field)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
@@ -2245,6 +2355,11 @@ func (ec *executionContext) marshalNID2string(ctx context.Context, sel ast.Selec
 
 func (ec *executionContext) unmarshalNLogin2smart_intercom_apiᚋgraphᚋmodelᚐLogin(ctx context.Context, v interface{}) (model.Login, error) {
 	res, err := ec.unmarshalInputLogin(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) unmarshalNNewPassword2smart_intercom_apiᚋgraphᚋmodelᚐNewPassword(ctx context.Context, v interface{}) (model.NewPassword, error) {
+	res, err := ec.unmarshalInputNewPassword(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
