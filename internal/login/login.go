@@ -276,7 +276,7 @@ func LoginMutation(ctx context.Context, input model.Login) (string, error) {
 	}
 
 	if !input.IsRemember {
-		return token, nil
+		return "Bearer " + token, nil
 	}
 
 	refreshToken, expiresTime, err := jwt.GenerateRefreshTokenForUser()
@@ -298,7 +298,7 @@ func LoginMutation(ctx context.Context, input model.Login) (string, error) {
 
 	err = authLogin.ChangeRefreshToken()
 
-	return token, err
+	return "Bearer " + token, err
 }
 
 func ChangePasswordMutation(ctx context.Context, input model.NewPassword) (string, error) {
@@ -332,7 +332,7 @@ func ChangePasswordMutation(ctx context.Context, input model.NewPassword) (strin
 	cookieAccess.Expires = refresh.Expires
 	cookieAccess.SetToken()
 
-	return token, nil
+	return "Bearer " + token, nil
 }
 
 func RefreshTokenQuery(ctx context.Context) (string, error) {
@@ -370,5 +370,5 @@ func RefreshTokenQuery(ctx context.Context) (string, error) {
 		return "", err
 	}
 
-	return token, nil
+	return "Bearer " + token, nil
 }

@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 	"smart_intercom_api/pkg/jwt"
+	"strings"
 )
 
 type LoginContext struct {
@@ -15,6 +16,16 @@ var authCtxKey = &contextKey{"auth"}
 
 type contextKey struct {
 	name string
+}
+
+func saveLoginContext(cookieAccess *CookieAccess, r *http.Request) *http.Request {
+	loginContext := LoginContext{
+		CookieAccess: cookieAccess,
+		IsLogin: false,
+	}
+
+	ctx := context.WithValue(r.Context(), authCtxKey, &loginContext)
+	return r.WithContext(ctx)
 }
 
 func Middleware() func(http.Handler) http.Handler {
@@ -31,18 +42,20 @@ func Middleware() func(http.Handler) http.Handler {
 			header := r.Header.Get("Authorization")
 
 			if header == "" {
-				loginContext := LoginContext{
-					CookieAccess: &cookieAccess,
-					IsLogin: false,
-				}
-
-				ctx := context.WithValue(r.Context(), authCtxKey, &loginContext)
-				r = r.WithContext(ctx)
+				r = saveLoginContext(&cookieAccess, r)
 				next.ServeHTTP(w, r)
 				return
 			}
 
-			tokenStr := header
+			splitToken := strings.Split(header, "Bearer ")
+
+			if len(splitToken) != 2 {
+				r = saveLoginContext(&cookieAccess, r)
+				next.ServeHTTP(w, r)
+				return
+			}
+
+			tokenStr := splitToken[1]
 			err := jwt.ParseTokenForUser(tokenStr)
 
 			if err != nil {
