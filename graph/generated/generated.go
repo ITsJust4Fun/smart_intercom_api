@@ -238,6 +238,7 @@ input NewVideo {
 }
 
 input Login {
+  isRemember: Boolean!
   password: String!
 }
 
@@ -1822,6 +1823,14 @@ func (ec *executionContext) unmarshalInputLogin(ctx context.Context, obj interfa
 
 	for k, v := range asMap {
 		switch k {
+		case "isRemember":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("isRemember"))
+			it.IsRemember, err = ec.unmarshalNBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
 		case "password":
 			var err error
 

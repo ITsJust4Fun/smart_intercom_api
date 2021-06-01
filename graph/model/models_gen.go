@@ -3,7 +3,8 @@
 package model
 
 type Login struct {
-	Password string `json:"password"`
+	IsRemember bool   `json:"isRemember"`
+	Password   string `json:"password"`
 }
 
 type NewPassword struct {

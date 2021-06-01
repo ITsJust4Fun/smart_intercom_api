@@ -10,6 +10,8 @@ import (
 	"golang.org/x/crypto/bcrypt"
 	"log"
 	"smart_intercom_api/graph/model"
+	"smart_intercom_api/internal/auth"
+	"smart_intercom_api/pkg/config"
 	"smart_intercom_api/pkg/jwt"
 	"time"
 )
@@ -31,8 +33,9 @@ type Refresh struct {
 }
 
 func loginsCollection() *mongo.Collection {
-	ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
-	client, err := mongo.NewClient(options.Client().ApplyURI("mongodb://192.168.3.14:27017"))
+	serverConfig := config.GetConfig()
+	ctx, _ := context.WithTimeout(context.Background(), serverConfig.DatabaseTimeout)
+	client, err := mongo.NewClient(options.Client().ApplyURI(serverConfig.DatabaseURI))
 
 	if err != nil {
 		log.Panic("Error when creating mongodb connection client", err)
@@ -67,7 +70,7 @@ func (login *Login) InsertOne(input model.Login) error {
 		RefreshToken: login.RefreshToken,
 	}
 
-	ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, _ := context.WithTimeout(context.Background(), config.GetConfig().DatabaseTimeout)
 	collection := loginsCollection()
 	id, err := collection.InsertOne(ctx, &loginInsertData)
 
@@ -87,7 +90,7 @@ func (login *Login) InsertOne(input model.Login) error {
 }
 
 func GetAll() ([]Login, error) {
-	ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, _ := context.WithTimeout(context.Background(), config.GetConfig().DatabaseTimeout)
 	collection := loginsCollection()
 	result, err := collection.Find(ctx, bson.D{})
 
@@ -103,6 +106,7 @@ func GetAll() ([]Login, error) {
 
 	if err != nil {
 		log.Print("Error when reading logins from cursor", err)
+		return nil, err
 	}
 
 	return logins, nil
@@ -177,7 +181,7 @@ func ChangePassword(input model.NewPassword) (*Refresh, error) {
 
 		login.RefreshToken = refreshToken
 
-		ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
+		ctx, _ := context.WithTimeout(context.Background(), config.GetConfig().DatabaseTimeout)
 		collection := loginsCollection()
 
 		id, _ := primitive.ObjectIDFromHex(login.ID)
@@ -210,7 +214,7 @@ func ChangePassword(input model.NewPassword) (*Refresh, error) {
 }
 
 func (login *Login) ChangeRefreshToken() error {
-	ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, _ := context.WithTimeout(context.Background(), config.GetConfig().DatabaseTimeout)
 	collection := loginsCollection()
 
 	id, _ := primitive.ObjectIDFromHex(login.ID)
@@ -254,4 +258,117 @@ func HashPassword(password string) (string, error) {
 func CheckPasswordHash(password, hash string) bool {
 	err := bcrypt.CompareHashAndPassword([]byte(hash), []byte(password))
 	return err == nil
+}
+
+func LoginMutation(ctx context.Context, input model.Login) (string, error) {
+	var authLogin Login
+	authLogin.Password = input.Password
+	err := authLogin.Authenticate()
+
+	if err != nil {
+		return "", err
+	}
+
+	token, err := jwt.GenerateTokenForUser()
+
+	if err != nil {
+		return "", err
+	}
+
+	if !input.IsRemember {
+		return token, nil
+	}
+
+	refreshToken, expiresTime, err := jwt.GenerateRefreshTokenForUser()
+
+	if err != nil {
+		return "", err
+	}
+
+	authLogin.RefreshToken = refreshToken
+	cookieAccess := auth.GetCookieAccess(ctx)
+
+	if cookieAccess == nil {
+		return "", errors.New("can't get cookie")
+	}
+
+	cookieAccess.Token = refreshToken
+	cookieAccess.Expires = expiresTime
+	cookieAccess.SetToken()
+
+	err = authLogin.ChangeRefreshToken()
+
+	return token, err
+}
+
+func ChangePasswordMutation(ctx context.Context, input model.NewPassword) (string, error) {
+	refresh, err := ChangePassword(input)
+
+	if err != nil {
+		return "", err
+	}
+
+	var authLogin Login
+	authLogin.Password = input.PasswordNew
+	err = authLogin.Authenticate()
+
+	if err != nil {
+		return "", err
+	}
+
+	token, err := jwt.GenerateTokenForUser()
+
+	if err != nil {
+		return "", err
+	}
+
+	cookieAccess := auth.GetCookieAccess(ctx)
+
+	if cookieAccess == nil {
+		return "", errors.New("can't get cookie")
+	}
+
+	cookieAccess.Token = refresh.Login.RefreshToken
+	cookieAccess.Expires = refresh.Expires
+	cookieAccess.SetToken()
+
+	return token, nil
+}
+
+func RefreshTokenQuery(ctx context.Context) (string, error) {
+	cookieAccess := auth.GetCookieAccess(ctx)
+
+	if cookieAccess == nil {
+		return "", errors.New("can't get cookie")
+	}
+
+	err := cookieAccess.GetToken()
+
+	if err != nil {
+		return "", err
+	}
+
+	loginData, err := GetLogin()
+
+	if err != nil {
+		return "", err
+	}
+
+	if loginData.RefreshToken != cookieAccess.Token {
+		return "", errors.New("wrong refresh token")
+	}
+
+	err = jwt.ParseRefreshTokenForUser(cookieAccess.Token)
+
+	if err != nil {
+		return "", err
+	}
+
+	token, err := jwt.GenerateTokenForUser()
+
+	if err != nil {
+		return "", err
+	}
+
+	return token, nil
 }

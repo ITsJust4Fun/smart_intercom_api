@@ -15,6 +15,7 @@ input NewVideo {
 }
 
 input Login {
+  isRemember: Boolean!
   password: String!
 }
 

@@ -4,20 +4,19 @@ import (
 	"github.com/dgrijalva/jwt-go"
 	"github.com/pkg/errors"
 	"log"
+	"smart_intercom_api/pkg/config"
 	"time"
 )
 
-var (
-	SecretKey = []byte("secret")
-)
-
 func GenerateTokenForUser() (string, error) {
+	serverConfig := config.GetConfig()
+
 	claims := &jwt.StandardClaims{
-		ExpiresAt: time.Now().Local().Add(time.Minute * 15).Unix(),
+		ExpiresAt: time.Now().Local().Add(serverConfig.TokenExpires).Unix(),
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	tokenString, err := token.SignedString(SecretKey)
+	tokenString, err := token.SignedString(serverConfig.SecretKey)
 
 	if err != nil {
 		log.Fatal("Error in Generating key")
@@ -28,11 +27,13 @@ func GenerateTokenForUser() (string, error) {
 }
 
 func ParseTokenForUser(tokenStr string) error {
+	serverConfig := config.GetConfig()
+
 	token, err := jwt.ParseWithClaims(
 		tokenStr,
 		&jwt.StandardClaims{},
 		func(token *jwt.Token) (interface{}, error) {
-			return SecretKey, nil
+			return serverConfig.SecretKey, nil
 		},
 	)
 
@@ -50,14 +51,15 @@ func ParseTokenForUser(tokenStr string) error {
 }
 
 func GenerateRefreshTokenForUser() (string, time.Time, error) {
-	expiresTime := time.Now().Local().Add(time.Hour * 24)
+	serverConfig := config.GetConfig()
+	expiresTime := time.Now().Local().Add(serverConfig.RefreshTokenExpires)
 
 	claims := &jwt.StandardClaims{
 		ExpiresAt: expiresTime.Unix(),
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	tokenString, err := token.SignedString(SecretKey)
+	tokenString, err := token.SignedString(serverConfig.SecretKey)
 
 	if err != nil {
 		log.Fatal("Error in Generating key")
