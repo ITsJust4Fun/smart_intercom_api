@@ -3,11 +3,15 @@ package auth
 import (
 	"context"
 	"net/http"
-
 	"smart_intercom_api/pkg/jwt"
 )
 
-var userCtxKey = &contextKey{"auth"}
+type LoginContext struct {
+	CookieAccess   *CookieAccess
+	IsLogin        bool
+}
+
+var authCtxKey = &contextKey{"auth"}
 
 type contextKey struct {
 	name string
@@ -16,9 +20,24 @@ type contextKey struct {
 func Middleware() func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			cookieAccess := CookieAccess{
+				Writer: w,
+				Request: r,
+				Name: "refreshToken",
+			}
+
+			_ = cookieAccess.GetToken()
+
 			header := r.Header.Get("Authorization")
 
 			if header == "" {
+				loginContext := LoginContext{
+					CookieAccess: &cookieAccess,
+					IsLogin: false,
+				}
+
+				ctx := context.WithValue(r.Context(), authCtxKey, &loginContext)
+				r = r.WithContext(ctx)
 				next.ServeHTTP(w, r)
 				return
 			}
@@ -31,15 +50,35 @@ func Middleware() func(http.Handler) http.Handler {
 				return
 			}
 
-			ctx := context.WithValue(r.Context(), userCtxKey, "done")
+			loginContext := LoginContext{
+				CookieAccess: &cookieAccess,
+				IsLogin: true,
+			}
 
+			ctx := context.WithValue(r.Context(), authCtxKey, &loginContext)
 			r = r.WithContext(ctx)
+
 			next.ServeHTTP(w, r)
 		})
 	}
 }
 
-func ForContext(ctx context.Context) bool {
-	raw, _ := ctx.Value(userCtxKey).(string)
-	return raw == "done"
+func GetLoginState(ctx context.Context) bool {
+	loginContext, _ := ctx.Value(authCtxKey).(*LoginContext)
+
+	if loginContext == nil {
+		return false
+	}
+
+	return loginContext.IsLogin
+}
+
+func GetCookieAccess(ctx context.Context) *CookieAccess {
+	loginContext, _ := ctx.Value(authCtxKey).(*LoginContext)
+
+	if loginContext == nil {
+		return nil
+	}
+
+	return loginContext.CookieAccess
 }

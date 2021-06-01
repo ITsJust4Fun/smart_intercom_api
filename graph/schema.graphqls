@@ -6,15 +6,12 @@ type Video {
 
 type Query {
   videos: [Video!]!
+  refreshToken: String!
 }
 
 input NewVideo {
   time: String!
   link: String!
-}
-
-input RefreshTokenInput{
-  token: String!
 }
 
 input Login {
@@ -29,6 +26,5 @@ input NewPassword {
 type Mutation {
   login(input: Login!): String!
   changePassword(input: NewPassword!): String!
-  refreshToken(input: RefreshTokenInput!): String!
   createVideo(input: NewVideo!): Video!
 }

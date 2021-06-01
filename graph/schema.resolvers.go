@@ -5,11 +5,11 @@ package graph
 
 import (
 	"context"
-	"fmt"
-	"github.com/pkg/errors"
+	"errors"
 	"log"
 	"smart_intercom_api/graph/generated"
 	"smart_intercom_api/graph/model"
+	"smart_intercom_api/internal/auth"
 	"smart_intercom_api/internal/login"
 	"smart_intercom_api/internal/videos"
 	"smart_intercom_api/pkg/jwt"
@@ -18,23 +18,42 @@ import (
 func (r *mutationResolver) Login(ctx context.Context, input model.Login) (string, error) {
 	var authLogin login.Login
 	authLogin.Password = input.Password
-	correct := authLogin.Authenticate()
+	err := authLogin.Authenticate()
 
-	if !correct {
-		return "", &login.WrongPasswordError{}
+	if err != nil {
+		return "", err
 	}
 
 	token, err := jwt.GenerateTokenForUser()
 
-	if err != nil{
+	if err != nil {
 		return "", err
 	}
 
-	return token, nil
+	refreshToken, expiresTime, err := jwt.GenerateRefreshTokenForUser()
+
+	if err != nil {
+		return "", err
+	}
+
+	authLogin.RefreshToken = refreshToken
+	cookieAccess := auth.GetCookieAccess(ctx)
+
+	if cookieAccess == nil {
+		return "", errors.New("can't get cookie")
+	}
+
+	cookieAccess.Token = refreshToken
+	cookieAccess.Expires = expiresTime
+	cookieAccess.SetToken()
+
+	err = authLogin.ChangeRefreshToken()
+
+	return token, err
 }
 
 func (r *mutationResolver) ChangePassword(ctx context.Context, input model.NewPassword) (string, error) {
-	err := login.ChangePassword(input)
+	refresh, err := login.ChangePassword(input)
 
 	if err != nil {
 		return "", err
@@ -42,26 +61,10 @@ func (r *mutationResolver) ChangePassword(ctx context.Context, input model.NewPa
 
 	var authLogin login.Login
 	authLogin.Password = input.PasswordNew
-	correct := authLogin.Authenticate()
-
-	if !correct {
-		return "", errors.New("can't update password")
-	}
-
-	token, err := jwt.GenerateTokenForUser()
-
-	if err != nil{
-		return "", err
-	}
-
-	return token, nil
-}
-
-func (r *mutationResolver) RefreshToken(ctx context.Context, input model.RefreshTokenInput) (string, error) {
-	err := jwt.ParseTokenForUser(input.Token)
+	err = authLogin.Authenticate()
 
 	if err != nil {
-		return "", fmt.Errorf("access denied")
+		return "", err
 	}
 
 	token, err := jwt.GenerateTokenForUser()
@@ -69,6 +72,16 @@ func (r *mutationResolver) RefreshToken(ctx context.Context, input model.Refresh
 	if err != nil {
 		return "", err
 	}
+
+	cookieAccess := auth.GetCookieAccess(ctx)
+
+	if cookieAccess == nil {
+		return "", errors.New("can't get cookie")
+	}
+
+	cookieAccess.Token = refresh.Login.RefreshToken
+	cookieAccess.Expires = refresh.Expires
+	cookieAccess.SetToken()
 
 	return token, nil
 }
@@ -102,6 +115,44 @@ func (r *queryResolver) Videos(ctx context.Context) ([]*model.Video, error) {
 	}
 
 	return result, nil
+}
+
+func (r *queryResolver) RefreshToken(ctx context.Context) (string, error) {
+	cookieAccess := auth.GetCookieAccess(ctx)
+
+	if cookieAccess == nil {
+		return "", errors.New("can't get cookie")
+	}
+
+	err := cookieAccess.GetToken()
+
+	if err != nil {
+		return "", err
+	}
+
+	loginData, err := login.GetLogin()
+
+	if err != nil {
+		return "", err
+	}
+
+	if loginData.RefreshToken != cookieAccess.Token {
+		return "", errors.New("wrong refresh token")
+	}
+
+	err = jwt.ParseRefreshTokenForUser(cookieAccess.Token)
+
+	if err != nil {
+		return "", err
+	}
+
+	token, err := jwt.GenerateTokenForUser()
+
+	if err != nil {
+		return "", err
+	}
+
+	return token, nil
 }
 
 // Mutation returns generated.MutationResolver implementation.

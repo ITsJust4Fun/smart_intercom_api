@@ -2,6 +2,7 @@ package jwt
 
 import (
 	"github.com/dgrijalva/jwt-go"
+	"github.com/pkg/errors"
 	"log"
 	"time"
 )
@@ -11,9 +12,11 @@ var (
 )
 
 func GenerateTokenForUser() (string, error) {
-	token := jwt.New(jwt.SigningMethodHS256)
-	claims := token.Claims.(jwt.MapClaims)
-	claims["exp"] = time.Now().Add(time.Hour * 24).Unix()
+	claims := &jwt.StandardClaims{
+		ExpiresAt: time.Now().Local().Add(time.Minute * 15).Unix(),
+	}
+
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	tokenString, err := token.SignedString(SecretKey)
 
 	if err != nil {
@@ -25,19 +28,45 @@ func GenerateTokenForUser() (string, error) {
 }
 
 func ParseTokenForUser(tokenStr string) error {
-	token, err := jwt.Parse(tokenStr, func(token *jwt.Token) (interface{}, error) {
-		return SecretKey, nil
-	})
+	token, err := jwt.ParseWithClaims(
+		tokenStr,
+		&jwt.StandardClaims{},
+		func(token *jwt.Token) (interface{}, error) {
+			return SecretKey, nil
+		},
+	)
 
-	if token == nil {
+	if err != nil {
 		return err
 	}
 
-	_, ok := token.Claims.(jwt.MapClaims)
+	_, ok := token.Claims.(*jwt.StandardClaims)
 
-	if ok && token.Valid {
-		return nil
-	} else {
-		return err
+	if !ok {
+		return errors.New("Couldn't parse claims")
 	}
+
+	return nil
+}
+
+func GenerateRefreshTokenForUser() (string, time.Time, error) {
+	expiresTime := time.Now().Local().Add(time.Hour * 24)
+
+	claims := &jwt.StandardClaims{
+		ExpiresAt: expiresTime.Unix(),
+	}
+
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	tokenString, err := token.SignedString(SecretKey)
+
+	if err != nil {
+		log.Fatal("Error in Generating key")
+		return "", expiresTime, err
+	}
+
+	return tokenString, expiresTime, nil
+}
+
+func ParseRefreshTokenForUser(tokenStr string) error {
+	return ParseTokenForUser(tokenStr)
 }

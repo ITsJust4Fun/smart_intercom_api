@@ -16,10 +16,6 @@ type NewVideo struct {
 	Link string `json:"link"`
 }
 
-type RefreshTokenInput struct {
-	Token string `json:"token"`
-}
-
 type Video struct {
 	ID   string `json:"_id"`
 	Time string `json:"time"`

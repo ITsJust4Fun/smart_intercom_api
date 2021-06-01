@@ -10,12 +10,24 @@ import (
 	"golang.org/x/crypto/bcrypt"
 	"log"
 	"smart_intercom_api/graph/model"
+	"smart_intercom_api/pkg/jwt"
 	"time"
 )
 
 type Login struct {
-	ID   string `json:"_id" bson:"_id"`
-	Password string `json:"password"`
+	ID            string  `json:"_id" bson:"_id"`
+	Password      string  `json:"password"`
+	RefreshToken  string  `json:"refresh_token" bson:"refresh_token"`
+}
+
+type DataInsert struct {
+	Password      string  `json:"password"`
+	RefreshToken  string  `json:"refresh_token" bson:"refresh_token"`
+}
+
+type Refresh struct {
+	Login *Login
+	Expires time.Time
 }
 
 func loginsCollection() *mongo.Collection {
@@ -44,15 +56,20 @@ func (login *Login) InsertOne(input model.Login) error {
 		return errors.New("there is login")
 	}
 
-	input.Password, err = HashPassword(input.Password)
+	login.Password, err = HashPassword(input.Password)
 
 	if err != nil {
 		return err
 	}
 
+	loginInsertData := DataInsert{
+		Password: login.Password,
+		RefreshToken: login.RefreshToken,
+	}
+
 	ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
 	collection := loginsCollection()
-	id, err := collection.InsertOne(ctx, input)
+	id, err := collection.InsertOne(ctx, &loginInsertData)
 
 	if err != nil {
 		log.Print("Error when inserting login", err)
@@ -91,56 +108,74 @@ func GetAll() ([]Login, error) {
 	return logins, nil
 }
 
-func GetPassword() (string, error) {
+func GetLogin() (*Login, error) {
 	logins, err := GetAll()
 
 	if len(logins) != 1 {
 		log.Print("Logins count != 1", err)
-		return "", errors.New("logins count != 1")
+		return nil, errors.New("logins count != 1")
 	}
 
-	return logins[0].Password, nil
+	return &logins[0], nil
 }
 
-func ChangePassword(input model.NewPassword) error {
+func ChangePassword(input model.NewPassword) (*Refresh, error) {
 	logins, err := GetAll()
 
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	if len(logins) == 0 {
 		if input.PasswordOld != "" {
-			return &WrongPasswordError{}
+			return nil, &WrongPasswordError{}
 		}
 
 		var login Login
 		var loginInput model.Login
 
 		loginInput.Password = input.PasswordNew
+		refreshToken, expiresTime, err := jwt.GenerateRefreshTokenForUser()
 
-		err := login.InsertOne(loginInput)
+		if err != nil {
+			return nil, err
+		}
+
+		login.RefreshToken = refreshToken
+		err = login.InsertOne(loginInput)
 
 		if err != nil {
 			log.Print("Error when inserting login", err)
-			return err
+			return nil, err
 		}
 
-		return nil
+		refresh := Refresh{
+			Login: &login,
+			Expires: expiresTime,
+		}
+
+		return &refresh, nil
 	} else if len(logins) == 1 {
 		login := logins[0]
 
 		if !CheckPasswordHash(input.PasswordOld, login.Password) {
-			return &WrongPasswordError{}
+			return nil, &WrongPasswordError{}
 		}
 
 		hashedPassword, err := HashPassword(input.PasswordNew)
 
 		if err != nil {
-			return err
+			return nil, err
 		}
 
 		login.Password = hashedPassword
+		refreshToken, expiresTime, err := jwt.GenerateRefreshTokenForUser()
+
+		if err != nil {
+			return nil, err
+		}
+
+		login.RefreshToken = refreshToken
 
 		ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
 		collection := loginsCollection()
@@ -151,28 +186,64 @@ func ChangePassword(input model.NewPassword) error {
 			ctx,
 			bson.M{"_id": id},
 			bson.D{
-				{"$set", bson.D{{"password", login.Password}}},
+				{"$set", bson.D{
+					    {"password", login.Password},
+					    {"refresh_token", login.RefreshToken},
+				    },
+				},
 			},
 		)
 
 		if err != nil {
-			return err
+			return nil, err
 		}
 
-		return nil
+		refresh := Refresh{
+			Login: &login,
+			Expires: expiresTime,
+		}
+
+		return &refresh, nil
 	}
 
-	return errors.New("logins count > 1")
+	return nil, errors.New("logins count > 1")
 }
 
-func (login *Login) Authenticate() bool {
-	hashedPassword, err := GetPassword()
+func (login *Login) ChangeRefreshToken() error {
+	ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
+	collection := loginsCollection()
+
+	id, _ := primitive.ObjectIDFromHex(login.ID)
+
+	_, err := collection.UpdateOne(
+		ctx,
+		bson.M{"_id": id},
+		bson.D{{"$set", bson.D{{"refresh_token", login.RefreshToken}}}},
+	)
 
 	if err != nil {
-		return false
+		return err
 	}
 
-	return CheckPasswordHash(login.Password, hashedPassword)
+	return nil
+}
+
+func (login *Login) Authenticate() error {
+	loginFromDB, err := GetLogin()
+
+	if err != nil {
+		return err
+	}
+
+	if !CheckPasswordHash(login.Password, loginFromDB.Password) {
+		return &WrongPasswordError{}
+	}
+
+	login.ID = loginFromDB.ID
+	login.Password = loginFromDB.Password
+	login.RefreshToken = loginFromDB.RefreshToken
+
+	return nil
 }
 
 func HashPassword(password string) (string, error) {
