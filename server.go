@@ -7,6 +7,7 @@ import (
 	"smart_intercom_api/graph"
 	"smart_intercom_api/graph/generated"
 	"smart_intercom_api/internal/auth"
+	"smart_intercom_api/pkg/config"
 
 	"github.com/99designs/gqlgen/graphql/handler"
 	"github.com/99designs/gqlgen/graphql/playground"
@@ -20,6 +21,8 @@ func main() {
 	if port == "" {
 		port = defaultPort
 	}
+
+	config.ReadConfigFile()
 
 	router := chi.NewRouter()
 	router.Use(auth.Middleware())
