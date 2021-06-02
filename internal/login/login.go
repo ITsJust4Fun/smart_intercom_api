@@ -354,6 +354,10 @@ func RefreshTokenQuery(ctx context.Context) (string, error) {
 		return "", err
 	}
 
+	if loginData.RefreshToken == "" {
+		return "", errors.New("no refresh token")
+	}
+
 	if loginData.RefreshToken != cookieAccess.Token {
 		return "", errors.New("wrong refresh token")
 	}
@@ -371,4 +375,33 @@ func RefreshTokenQuery(ctx context.Context) (string, error) {
 	}
 
 	return "Bearer " + token, nil
+}
+
+func LogoutQuery(ctx context.Context) (string, error) {
+	loginData, err := GetLogin()
+
+	if err != nil {
+		return "", err
+	}
+
+	if loginData.RefreshToken == "" {
+		return "", errors.New("no refresh token")
+	}
+
+	loginData.RefreshToken = ""
+	err = loginData.ChangeRefreshToken()
+
+	if err != nil {
+		return "", errors.New("can't remove token")
+	}
+
+	cookieAccess := auth.GetCookieAccess(ctx)
+
+	if cookieAccess == nil {
+		return "", errors.New("can't get cookie")
+	}
+
+	cookieAccess.DeleteToken()
+
+	return "done", nil
 }

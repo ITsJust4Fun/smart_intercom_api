@@ -24,6 +24,17 @@ func (cookieAccess *CookieAccess) SetToken() {
 	})
 }
 
+func (cookieAccess *CookieAccess) DeleteToken() {
+	http.SetCookie(cookieAccess.Writer, &http.Cookie{
+		Name:     cookieAccess.Name,
+		Value:    "",
+		HttpOnly: true,
+		Path:     "/",
+		Expires:  cookieAccess.Expires,
+		MaxAge: -1,
+	})
+}
+
 func (cookieAccess *CookieAccess) GetToken() error {
 	if cookieAccess.Request == nil {
 		return errors.New("There is no request")

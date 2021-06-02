@@ -19,16 +19,20 @@ func (r *mutationResolver) ChangePassword(ctx context.Context, input model.NewPa
 	return login.ChangePasswordMutation(ctx, input)
 }
 
-func (r *queryResolver) RefreshToken(ctx context.Context) (string, error) {
-	return login.RefreshTokenQuery(ctx)
-}
-
 func (r *mutationResolver) CreateVideo(ctx context.Context, input model.NewVideo) (*model.Video, error) {
 	return videos.CreateVideoMutation(ctx, input)
 }
 
 func (r *queryResolver) Videos(ctx context.Context) ([]*model.Video, error) {
 	return videos.VideosQuery(ctx)
+}
+
+func (r *queryResolver) RefreshToken(ctx context.Context) (string, error) {
+	return login.RefreshTokenQuery(ctx)
+}
+
+func (r *queryResolver) Logout(ctx context.Context) (string, error) {
+	return login.LogoutQuery(ctx)
 }
 
 // Mutation returns generated.MutationResolver implementation.
