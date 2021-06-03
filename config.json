@@ -1,6 +1,6 @@
 {
   "database_uri": "mongodb://192.168.3.14:27017",
-  "database_timeout": 10,
+  "database_timeout": 30,
   "token_expires": 15,
   "refresh_token_expires": 24,
   "secret_key": "secret_key"

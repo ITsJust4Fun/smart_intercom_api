@@ -13,12 +13,18 @@ type NewPassword struct {
 }
 
 type NewVideo struct {
-	Time string `json:"time"`
-	Link string `json:"link"`
+	Time      string `json:"time"`
+	Link      string `json:"link"`
+	Thumbnail string `json:"thumbnail"`
+}
+
+type RemoveVideo struct {
+	ID string `json:"id"`
 }
 
 type Video struct {
-	ID   string `json:"_id"`
-	Time string `json:"time"`
-	Link string `json:"link"`
+	ID        string `json:"_id"`
+	Time      string `json:"time"`
+	Link      string `json:"link"`
+	Thumbnail string `json:"thumbnail"`
 }

@@ -4,18 +4,22 @@ import (
 	"context"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"log"
 	"smart_intercom_api/graph/model"
 	"smart_intercom_api/internal/auth"
 	"smart_intercom_api/pkg/config"
+	"smart_intercom_api/pkg/random"
+	"smart_intercom_api/pkg/subscriptions"
 )
 
 type Video struct {
-	ID   string `json:"_id" bson:"_id"`
-	Time string `json:"time"`
-	Link string `json:"link"`
+	ID        string `json:"_id" bson:"_id"`
+	Time      string `json:"time"`
+	Link      string `json:"link"`
+	Thumbnail string `json:"thumbnail"`
 }
 
 func videosCollection() *mongo.Collection {
@@ -92,6 +96,13 @@ func CreateVideoMutation(ctx context.Context, input model.NewVideo) (*model.Vide
 	}
 
 	result := model.Video(video)
+	subscriptions.VideoUpdatedMutex.Lock()
+
+	for _, observer := range subscriptions.VideoUpdatedObservers {
+		observer <- &result
+	}
+
+	subscriptions.VideoUpdatedMutex.Unlock()
 
 	return &result, nil
 }
@@ -115,4 +126,63 @@ func VideosQuery(ctx context.Context) ([]*model.Video, error) {
 	}
 
 	return result, nil
+}
+
+func RemoveVideoMutation(ctx context.Context, input model.RemoveVideo) (*model.Video, error) {
+	if !auth.GetLoginState(ctx) {
+		return nil, errors.New("access denied")
+	}
+
+	ctx, _ = context.WithTimeout(context.Background(), config.GetConfig().DatabaseTimeout)
+	collection := videosCollection()
+
+	id, _ := primitive.ObjectIDFromHex(input.ID)
+
+	result, err := collection.DeleteOne(
+		ctx,
+		bson.M{"_id": id},
+	)
+
+	if err != nil {
+		return nil, err
+	}
+
+	if result.DeletedCount != 1 {
+		return nil, errors.New("can't find video for remove")
+	}
+
+	removedVideo := model.Video {
+		ID: input.ID,
+		Time: "removed",
+		Link: "removed",
+		Thumbnail: "removed",
+	}
+
+	subscriptions.VideoUpdatedMutex.Lock()
+
+	for _, observer := range subscriptions.VideoUpdatedObservers {
+		observer <- &removedVideo
+	}
+
+	subscriptions.VideoUpdatedMutex.Unlock()
+
+	return &removedVideo, nil
+}
+
+func VideoUpdatedSubscription(ctx context.Context) (<-chan *model.Video, error) {
+	id := random.String(8)
+	videoEvent := make(chan *model.Video, 1)
+
+	go func() {
+		<-ctx.Done()
+		subscriptions.VideoUpdatedMutex.Lock()
+		delete(subscriptions.VideoUpdatedObservers, id)
+		subscriptions.VideoUpdatedMutex.Unlock()
+	}()
+
+	subscriptions.VideoUpdatedMutex.Lock()
+	subscriptions.VideoUpdatedObservers[id] = videoEvent
+	subscriptions.VideoUpdatedMutex.Unlock()
+
+	return videoEvent, nil
 }

@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"io"
 	"smart_intercom_api/graph/model"
 	"strconv"
 	"sync"
@@ -37,6 +38,7 @@ type Config struct {
 type ResolverRoot interface {
 	Mutation() MutationResolver
 	Query() QueryResolver
+	Subscription() SubscriptionResolver
 }
 
 type DirectiveRoot struct {
@@ -47,6 +49,7 @@ type ComplexityRoot struct {
 		ChangePassword func(childComplexity int, input model.NewPassword) int
 		CreateVideo    func(childComplexity int, input model.NewVideo) int
 		Login          func(childComplexity int, input model.Login) int
+		RemoveVideo    func(childComplexity int, input model.RemoveVideo) int
 	}
 
 	Query struct {
@@ -55,10 +58,15 @@ type ComplexityRoot struct {
 		Videos       func(childComplexity int) int
 	}
 
+	Subscription struct {
+		VideoUpdated func(childComplexity int) int
+	}
+
 	Video struct {
-		ID   func(childComplexity int) int
-		Link func(childComplexity int) int
-		Time func(childComplexity int) int
+		ID        func(childComplexity int) int
+		Link      func(childComplexity int) int
+		Thumbnail func(childComplexity int) int
+		Time      func(childComplexity int) int
 	}
 }
 
@@ -66,11 +74,15 @@ type MutationResolver interface {
 	Login(ctx context.Context, input model.Login) (string, error)
 	ChangePassword(ctx context.Context, input model.NewPassword) (string, error)
 	CreateVideo(ctx context.Context, input model.NewVideo) (*model.Video, error)
+	RemoveVideo(ctx context.Context, input model.RemoveVideo) (*model.Video, error)
 }
 type QueryResolver interface {
 	Videos(ctx context.Context) ([]*model.Video, error)
 	RefreshToken(ctx context.Context) (string, error)
 	Logout(ctx context.Context) (string, error)
+}
+type SubscriptionResolver interface {
+	VideoUpdated(ctx context.Context) (<-chan *model.Video, error)
 }
 
 type executableSchema struct {
@@ -124,6 +136,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Mutation.Login(childComplexity, args["input"].(model.Login)), true
 
+	case "Mutation.removeVideo":
+		if e.complexity.Mutation.RemoveVideo == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_removeVideo_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.RemoveVideo(childComplexity, args["input"].(model.RemoveVideo)), true
+
 	case "Query.logout":
 		if e.complexity.Query.Logout == nil {
 			break
@@ -145,6 +169,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Query.Videos(childComplexity), true
 
+	case "Subscription.videoUpdated":
+		if e.complexity.Subscription.VideoUpdated == nil {
+			break
+		}
+
+		return e.complexity.Subscription.VideoUpdated(childComplexity), true
+
 	case "Video._id":
 		if e.complexity.Video.ID == nil {
 			break
@@ -158,6 +189,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Video.Link(childComplexity), true
+
+	case "Video.thumbnail":
+		if e.complexity.Video.Thumbnail == nil {
+			break
+		}
+
+		return e.complexity.Video.Thumbnail(childComplexity), true
 
 	case "Video.time":
 		if e.complexity.Video.Time == nil {
@@ -204,6 +242,23 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 				Data: buf.Bytes(),
 			}
 		}
+	case ast.Subscription:
+		next := ec._Subscription(ctx, rc.Operation.SelectionSet)
+
+		var buf bytes.Buffer
+		return func(ctx context.Context) *graphql.Response {
+			buf.Reset()
+			data := next()
+
+			if data == nil {
+				return nil
+			}
+			data.MarshalGQL(&buf)
+
+			return &graphql.Response{
+				Data: buf.Bytes(),
+			}
+		}
 
 	default:
 		return graphql.OneShot(graphql.ErrorResponse(ctx, "unsupported GraphQL operation"))
@@ -234,6 +289,7 @@ var sources = []*ast.Source{
   _id: ID!
   time: String!
   link: String!
+  thumbnail: String!
 }
 
 type Query {
@@ -245,6 +301,11 @@ type Query {
 input NewVideo {
   time: String!
   link: String!
+  thumbnail: String!
+}
+
+input RemoveVideo {
+  id: String!
 }
 
 input Login {
@@ -261,6 +322,11 @@ type Mutation {
   login(input: Login!): String!
   changePassword(input: NewPassword!): String!
   createVideo(input: NewVideo!): Video!
+  removeVideo(input: RemoveVideo!): Video!
+}
+
+type Subscription {
+  videoUpdated: Video!
 }
 `, BuiltIn: false},
 }
@@ -307,6 +373,21 @@ func (ec *executionContext) field_Mutation_login_args(ctx context.Context, rawAr
 	if tmp, ok := rawArgs["input"]; ok {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("input"))
 		arg0, err = ec.unmarshalNLogin2smart_intercom_apiᚋgraphᚋmodelᚐLogin(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["input"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_removeVideo_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 model.RemoveVideo
+	if tmp, ok := rawArgs["input"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("input"))
+		arg0, err = ec.unmarshalNRemoveVideo2smart_intercom_apiᚋgraphᚋmodelᚐRemoveVideo(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
@@ -478,6 +559,48 @@ func (ec *executionContext) _Mutation_createVideo(ctx context.Context, field gra
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
 		return ec.resolvers.Mutation().CreateVideo(rctx, args["input"].(model.NewVideo))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*model.Video)
+	fc.Result = res
+	return ec.marshalNVideo2ᚖsmart_intercom_apiᚋgraphᚋmodelᚐVideo(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Mutation_removeVideo(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   true,
+		IsResolver: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	rawArgs := field.ArgumentMap(ec.Variables)
+	args, err := ec.field_Mutation_removeVideo_args(ctx, rawArgs)
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	fc.Args = args
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().RemoveVideo(rctx, args["input"].(model.RemoveVideo))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -670,6 +793,51 @@ func (ec *executionContext) _Query___schema(ctx context.Context, field graphql.C
 	return ec.marshalO__Schema2ᚖgithubᚗcomᚋ99designsᚋgqlgenᚋgraphqlᚋintrospectionᚐSchema(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _Subscription_videoUpdated(ctx context.Context, field graphql.CollectedField) (ret func() graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = nil
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Subscription",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   true,
+		IsResolver: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Subscription().VideoUpdated(rctx)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return nil
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return nil
+	}
+	return func() graphql.Marshaler {
+		res, ok := <-resTmp.(<-chan *model.Video)
+		if !ok {
+			return nil
+		}
+		return graphql.WriterFunc(func(w io.Writer) {
+			w.Write([]byte{'{'})
+			graphql.MarshalString(field.Alias).MarshalGQL(w)
+			w.Write([]byte{':'})
+			ec.marshalNVideo2ᚖsmart_intercom_apiᚋgraphᚋmodelᚐVideo(ctx, field.Selections, res).MarshalGQL(w)
+			w.Write([]byte{'}'})
+		})
+	}
+}
+
 func (ec *executionContext) _Video__id(ctx context.Context, field graphql.CollectedField, obj *model.Video) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -759,6 +927,41 @@ func (ec *executionContext) _Video_link(ctx context.Context, field graphql.Colle
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
 		return obj.Link, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Video_thumbnail(ctx context.Context, field graphql.CollectedField, obj *model.Video) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Video",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Thumbnail, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -1940,6 +2143,34 @@ func (ec *executionContext) unmarshalInputNewVideo(ctx context.Context, obj inte
 			if err != nil {
 				return it, err
 			}
+		case "thumbnail":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("thumbnail"))
+			it.Thumbnail, err = ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputRemoveVideo(ctx context.Context, obj interface{}) (model.RemoveVideo, error) {
+	var it model.RemoveVideo
+	var asMap = obj.(map[string]interface{})
+
+	for k, v := range asMap {
+		switch k {
+		case "id":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("id"))
+			it.ID, err = ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
 		}
 	}
 
@@ -1981,6 +2212,11 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			}
 		case "createVideo":
 			out.Values[i] = ec._Mutation_createVideo(ctx, field)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "removeVideo":
+			out.Values[i] = ec._Mutation_removeVideo(ctx, field)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
@@ -2067,6 +2303,26 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 	return out
 }
 
+var subscriptionImplementors = []string{"Subscription"}
+
+func (ec *executionContext) _Subscription(ctx context.Context, sel ast.SelectionSet) func() graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, subscriptionImplementors)
+	ctx = graphql.WithFieldContext(ctx, &graphql.FieldContext{
+		Object: "Subscription",
+	})
+	if len(fields) != 1 {
+		ec.Errorf(ctx, "must subscribe to exactly one stream")
+		return nil
+	}
+
+	switch fields[0].Name {
+	case "videoUpdated":
+		return ec._Subscription_videoUpdated(ctx, fields[0])
+	default:
+		panic("unknown field " + strconv.Quote(fields[0].Name))
+	}
+}
+
 var videoImplementors = []string{"Video"}
 
 func (ec *executionContext) _Video(ctx context.Context, sel ast.SelectionSet, obj *model.Video) graphql.Marshaler {
@@ -2090,6 +2346,11 @@ func (ec *executionContext) _Video(ctx context.Context, sel ast.SelectionSet, ob
 			}
 		case "link":
 			out.Values[i] = ec._Video_link(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "thumbnail":
+			out.Values[i] = ec._Video_thumbnail(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
@@ -2391,6 +2652,11 @@ func (ec *executionContext) unmarshalNNewPassword2smart_intercom_apiᚋgraphᚋm
 
 func (ec *executionContext) unmarshalNNewVideo2smart_intercom_apiᚋgraphᚋmodelᚐNewVideo(ctx context.Context, v interface{}) (model.NewVideo, error) {
 	res, err := ec.unmarshalInputNewVideo(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) unmarshalNRemoveVideo2smart_intercom_apiᚋgraphᚋmodelᚐRemoveVideo(ctx context.Context, v interface{}) (model.RemoveVideo, error) {
+	res, err := ec.unmarshalInputRemoveVideo(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 

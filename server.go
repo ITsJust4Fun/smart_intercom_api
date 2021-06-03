@@ -8,6 +8,7 @@ import (
 	"smart_intercom_api/graph/generated"
 	"smart_intercom_api/internal/auth"
 	"smart_intercom_api/pkg/config"
+	"smart_intercom_api/pkg/subscriptions"
 
 	"github.com/99designs/gqlgen/graphql/handler"
 	"github.com/99designs/gqlgen/graphql/playground"
@@ -23,6 +24,7 @@ func main() {
 	}
 
 	config.ReadConfigFile()
+	subscriptions.Init()
 
 	router := chi.NewRouter()
 	router.Use(auth.Middleware())
