@@ -12,14 +12,35 @@ type NewPassword struct {
 	PasswordOld string `json:"passwordOld"`
 }
 
+type NewReport struct {
+	Level    int    `json:"level"`
+	Time     string `json:"time"`
+	Title    string `json:"title"`
+	Body     string `json:"body"`
+	IsViewed bool   `json:"isViewed"`
+}
+
 type NewVideo struct {
 	Time      string `json:"time"`
 	Link      string `json:"link"`
 	Thumbnail string `json:"thumbnail"`
 }
 
+type RemoveReport struct {
+	ID string `json:"id"`
+}
+
 type RemoveVideo struct {
 	ID string `json:"id"`
+}
+
+type Report struct {
+	ID       string `json:"_id"`
+	Level    int    `json:"level"`
+	Time     string `json:"time"`
+	Title    string `json:"title"`
+	Body     string `json:"body"`
+	IsViewed bool   `json:"isViewed"`
 }
 
 type Video struct {
@@ -27,4 +48,8 @@ type Video struct {
 	Time      string `json:"time"`
 	Link      string `json:"link"`
 	Thumbnail string `json:"thumbnail"`
+}
+
+type ViewReport struct {
+	ID string `json:"id"`
 }

@@ -8,6 +8,7 @@ import (
 	"smart_intercom_api/graph/generated"
 	"smart_intercom_api/graph/model"
 	"smart_intercom_api/internal/login"
+	"smart_intercom_api/internal/report"
 	"smart_intercom_api/internal/videos"
 )
 
@@ -27,8 +28,24 @@ func (r *mutationResolver) RemoveVideo(ctx context.Context, input model.RemoveVi
 	return videos.RemoveVideoMutation(ctx, input)
 }
 
+func (r *mutationResolver) CreateReport(ctx context.Context, input model.NewReport) (*model.Report, error) {
+	return report.CreateReportMutation(ctx, input)
+}
+
+func (r *mutationResolver) ViewReport(ctx context.Context, input model.ViewReport) (*model.Report, error) {
+	return report.ViewReportMutation(ctx, input)
+}
+
+func (r *mutationResolver) RemoveReport(ctx context.Context, input model.RemoveReport) (*model.Report, error) {
+	return report.RemoveReportMutation(ctx, input)
+}
+
 func (r *queryResolver) Videos(ctx context.Context) ([]*model.Video, error) {
-	return videos.VideosQuery(ctx)
+	return videos.Query(ctx)
+}
+
+func (r *queryResolver) Reports(ctx context.Context) ([]*model.Report, error) {
+	return report.ReportsQuery(ctx)
 }
 
 func (r *queryResolver) RefreshToken(ctx context.Context) (string, error) {

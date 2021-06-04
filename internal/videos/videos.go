@@ -23,7 +23,7 @@ type Video struct {
 }
 
 func videosCollection() *mongo.Collection {
-	ctx, _ := context.WithTimeout(context.Background(), config.GetConfig().DatabaseTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), config.GetConfig().DatabaseTimeout)
 	client, err := mongo.NewClient(options.Client().ApplyURI("mongodb://192.168.3.14:27017"))
 
 	if err != nil {
@@ -37,15 +37,17 @@ func videosCollection() *mongo.Collection {
 		log.Panic("Error when connecting to mongodb", err)
 	}
 
+	cancel()
 	return collection
 }
 
 func (video *Video) InsertOne(input model.NewVideo) error {
-	ctx, _ := context.WithTimeout(context.Background(), config.GetConfig().DatabaseTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), config.GetConfig().DatabaseTimeout)
 	collection := videosCollection()
 	id, err := collection.InsertOne(ctx, input)
 
 	if err != nil {
+		cancel()
 		log.Print("Error when inserting video", err)
 		return err
 	}
@@ -53,32 +55,42 @@ func (video *Video) InsertOne(input model.NewVideo) error {
 	err = collection.FindOne(ctx, bson.M{"_id": id.InsertedID}).Decode(video)
 
 	if err != nil {
+		cancel()
 		log.Print("Error when finding the inserted video by its id", err)
 		return err
 	}
 
+	cancel()
 	return nil
 }
 
 func GetAll() ([]Video, error) {
-	ctx, _ := context.WithTimeout(context.Background(), config.GetConfig().DatabaseTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), config.GetConfig().DatabaseTimeout)
 	collection := videosCollection()
 	result, err := collection.Find(ctx, bson.D{})
 
 	if err != nil {
+		cancel()
 		log.Print("Error when finding video", err)
 		return nil, err
 	}
 
-	defer result.Close(ctx)
+	defer func(result *mongo.Cursor, ctx context.Context) {
+		err := result.Close(ctx)
+
+		if err != nil {
+			return
+		}
+	}(result, ctx)
 
 	var videos []Video
 	err = result.All(ctx, &videos)
 
 	if err != nil {
-		log.Print("Error when reading users from cursor", err)
+		log.Print("Error when reading reports from cursor", err)
 	}
 
+	cancel()
 	return videos, nil
 }
 
@@ -107,7 +119,7 @@ func CreateVideoMutation(ctx context.Context, input model.NewVideo) (*model.Vide
 	return &result, nil
 }
 
-func VideosQuery(ctx context.Context) ([]*model.Video, error) {
+func Query(ctx context.Context) ([]*model.Video, error) {
 	if !auth.GetLoginState(ctx) {
 		return nil, errors.New("access denied")
 	}
@@ -115,7 +127,7 @@ func VideosQuery(ctx context.Context) ([]*model.Video, error) {
 	allVideos, err := GetAll()
 
 	if err != nil {
-		log.Print("Error when getting users", err)
+		log.Print("Error when getting videos", err)
 	}
 
 	var result []*model.Video
@@ -133,7 +145,7 @@ func RemoveVideoMutation(ctx context.Context, input model.RemoveVideo) (*model.V
 		return nil, errors.New("access denied")
 	}
 
-	ctx, _ = context.WithTimeout(context.Background(), config.GetConfig().DatabaseTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), config.GetConfig().DatabaseTimeout)
 	collection := videosCollection()
 
 	id, _ := primitive.ObjectIDFromHex(input.ID)
@@ -144,11 +156,13 @@ func RemoveVideoMutation(ctx context.Context, input model.RemoveVideo) (*model.V
 	)
 
 	if err != nil {
+		cancel()
 		return nil, err
 	}
 
 	if result.DeletedCount != 1 {
-		return nil, errors.New("can't find video for remove")
+		cancel()
+		return nil, errors.New("can't find video to remove")
 	}
 
 	removedVideo := model.Video {
@@ -166,6 +180,7 @@ func RemoveVideoMutation(ctx context.Context, input model.RemoveVideo) (*model.V
 
 	subscriptions.VideoUpdatedMutex.Unlock()
 
+	cancel()
 	return &removedVideo, nil
 }
 

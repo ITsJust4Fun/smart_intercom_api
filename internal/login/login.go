@@ -34,7 +34,7 @@ type Refresh struct {
 
 func loginsCollection() *mongo.Collection {
 	serverConfig := config.GetConfig()
-	ctx, _ := context.WithTimeout(context.Background(), serverConfig.DatabaseTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), serverConfig.DatabaseTimeout)
 	client, err := mongo.NewClient(options.Client().ApplyURI(serverConfig.DatabaseURI))
 
 	if err != nil {
@@ -48,6 +48,7 @@ func loginsCollection() *mongo.Collection {
 		log.Panic("Error when connecting to mongodb", err)
 	}
 
+	cancel()
 	return collection
 }
 
@@ -70,11 +71,12 @@ func (login *Login) InsertOne(input model.Login) error {
 		RefreshToken: login.RefreshToken,
 	}
 
-	ctx, _ := context.WithTimeout(context.Background(), config.GetConfig().DatabaseTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), config.GetConfig().DatabaseTimeout)
 	collection := loginsCollection()
 	id, err := collection.InsertOne(ctx, &loginInsertData)
 
 	if err != nil {
+		cancel()
 		log.Print("Error when inserting login", err)
 		return err
 	}
@@ -82,33 +84,43 @@ func (login *Login) InsertOne(input model.Login) error {
 	err = collection.FindOne(ctx, bson.M{"_id": id.InsertedID}).Decode(login)
 
 	if err != nil {
+		cancel()
 		log.Print("Error when finding the inserted login by its id", err)
 		return err
 	}
 
+	cancel()
 	return nil
 }
 
 func GetAll() ([]Login, error) {
-	ctx, _ := context.WithTimeout(context.Background(), config.GetConfig().DatabaseTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), config.GetConfig().DatabaseTimeout)
 	collection := loginsCollection()
 	result, err := collection.Find(ctx, bson.D{})
 
 	if err != nil {
+		cancel()
 		log.Print("Error when finding user", err)
 		return nil, err
 	}
 
-	defer result.Close(ctx)
+	defer func(result *mongo.Cursor, ctx context.Context) {
+		err := result.Close(ctx)
+		if err != nil {
+			return
+		}
+	}(result, ctx)
 
 	var logins []Login
 	err = result.All(ctx, &logins)
 
 	if err != nil {
+		cancel()
 		log.Print("Error when reading logins from cursor", err)
 		return nil, err
 	}
 
+	cancel()
 	return logins, nil
 }
 
@@ -181,7 +193,7 @@ func ChangePassword(input model.NewPassword) (*Refresh, error) {
 
 		login.RefreshToken = refreshToken
 
-		ctx, _ := context.WithTimeout(context.Background(), config.GetConfig().DatabaseTimeout)
+		ctx, cancel := context.WithTimeout(context.Background(), config.GetConfig().DatabaseTimeout)
 		collection := loginsCollection()
 
 		id, _ := primitive.ObjectIDFromHex(login.ID)
@@ -199,6 +211,7 @@ func ChangePassword(input model.NewPassword) (*Refresh, error) {
 		)
 
 		if err != nil {
+			cancel()
 			return nil, err
 		}
 
@@ -207,6 +220,7 @@ func ChangePassword(input model.NewPassword) (*Refresh, error) {
 			Expires: expiresTime,
 		}
 
+		cancel()
 		return &refresh, nil
 	}
 
@@ -214,7 +228,7 @@ func ChangePassword(input model.NewPassword) (*Refresh, error) {
 }
 
 func (login *Login) ChangeRefreshToken() error {
-	ctx, _ := context.WithTimeout(context.Background(), config.GetConfig().DatabaseTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), config.GetConfig().DatabaseTimeout)
 	collection := loginsCollection()
 
 	id, _ := primitive.ObjectIDFromHex(login.ID)
@@ -226,9 +240,11 @@ func (login *Login) ChangeRefreshToken() error {
 	)
 
 	if err != nil {
+		cancel()
 		return err
 	}
 
+	cancel()
 	return nil
 }
 
