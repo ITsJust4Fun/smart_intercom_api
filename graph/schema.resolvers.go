@@ -48,6 +48,10 @@ func (r *queryResolver) Reports(ctx context.Context) ([]*model.Report, error) {
 	return report.ReportsQuery(ctx)
 }
 
+func (r *queryResolver) UnviewedReportsCount(ctx context.Context) (int, error) {
+	return report.UnviewedReportsCount(ctx)
+}
+
 func (r *queryResolver) RefreshToken(ctx context.Context) (string, error) {
 	return login.RefreshTokenQuery(ctx)
 }

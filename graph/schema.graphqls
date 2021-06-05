@@ -17,6 +17,7 @@ type Report {
 type Query {
   videos: [Video!]!
   reports: [Report!]!
+  unviewedReportsCount: Int!
   refreshToken: String!
   logout: String!
 }

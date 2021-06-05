@@ -56,10 +56,11 @@ type ComplexityRoot struct {
 	}
 
 	Query struct {
-		Logout       func(childComplexity int) int
-		RefreshToken func(childComplexity int) int
-		Reports      func(childComplexity int) int
-		Videos       func(childComplexity int) int
+		Logout               func(childComplexity int) int
+		RefreshToken         func(childComplexity int) int
+		Reports              func(childComplexity int) int
+		UnviewedReportsCount func(childComplexity int) int
+		Videos               func(childComplexity int) int
 	}
 
 	Report struct {
@@ -95,6 +96,7 @@ type MutationResolver interface {
 type QueryResolver interface {
 	Videos(ctx context.Context) ([]*model.Video, error)
 	Reports(ctx context.Context) ([]*model.Report, error)
+	UnviewedReportsCount(ctx context.Context) (int, error)
 	RefreshToken(ctx context.Context) (string, error)
 	Logout(ctx context.Context) (string, error)
 }
@@ -221,6 +223,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Query.Reports(childComplexity), true
+
+	case "Query.unviewedReportsCount":
+		if e.complexity.Query.UnviewedReportsCount == nil {
+			break
+		}
+
+		return e.complexity.Query.UnviewedReportsCount(childComplexity), true
 
 	case "Query.videos":
 		if e.complexity.Query.Videos == nil {
@@ -406,6 +415,7 @@ type Report {
 type Query {
   videos: [Video!]!
   reports: [Report!]!
+  unviewedReportsCount: Int!
   refreshToken: String!
   logout: String!
 }
@@ -986,6 +996,41 @@ func (ec *executionContext) _Query_reports(ctx context.Context, field graphql.Co
 	res := resTmp.([]*model.Report)
 	fc.Result = res
 	return ec.marshalNReport2ᚕᚖsmart_intercom_apiᚋgraphᚋmodelᚐReportᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Query_unviewedReportsCount(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   true,
+		IsResolver: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().UnviewedReportsCount(rctx)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Query_refreshToken(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
@@ -2922,6 +2967,20 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_reports(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
+				return res
+			})
+		case "unviewedReportsCount":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_unviewedReportsCount(ctx, field)
 				if res == graphql.Null {
 					atomic.AddUint32(&invalids, 1)
 				}

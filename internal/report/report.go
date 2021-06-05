@@ -217,3 +217,24 @@ func ViewReportMutation(ctx context.Context, input model.ViewReport) (*model.Rep
 	cancel()
 	return &result, nil
 }
+
+func UnviewedReportsCount(ctx context.Context) (int, error) {
+	if !auth.GetLoginState(ctx) {
+		return 0, errors.New("access denied")
+	}
+
+	reports, err := GetAll()
+
+	if err != nil {
+		return 0, err
+	}
+
+	unviewed := 0
+	for _, report := range reports {
+		if !report.IsViewed {
+			unviewed += 1
+		}
+	}
+
+	return unviewed, nil
+}
