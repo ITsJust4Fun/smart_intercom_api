@@ -43,6 +43,12 @@ type Report struct {
 	IsViewed bool   `json:"isViewed"`
 }
 
+type ReportStatistics struct {
+	Normal   int `json:"normal"`
+	Warnings int `json:"warnings"`
+	Errors   int `json:"errors"`
+}
+
 type Video struct {
 	ID        string `json:"_id"`
 	Time      string `json:"time"`

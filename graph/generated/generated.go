@@ -58,6 +58,7 @@ type ComplexityRoot struct {
 	Query struct {
 		Logout               func(childComplexity int) int
 		RefreshToken         func(childComplexity int) int
+		ReportStatistics     func(childComplexity int) int
 		Reports              func(childComplexity int) int
 		UnviewedReportsCount func(childComplexity int) int
 		Videos               func(childComplexity int) int
@@ -70,6 +71,12 @@ type ComplexityRoot struct {
 		Level    func(childComplexity int) int
 		Time     func(childComplexity int) int
 		Title    func(childComplexity int) int
+	}
+
+	ReportStatistics struct {
+		Errors   func(childComplexity int) int
+		Normal   func(childComplexity int) int
+		Warnings func(childComplexity int) int
 	}
 
 	Subscription struct {
@@ -97,6 +104,7 @@ type QueryResolver interface {
 	Videos(ctx context.Context) ([]*model.Video, error)
 	Reports(ctx context.Context) ([]*model.Report, error)
 	UnviewedReportsCount(ctx context.Context) (int, error)
+	ReportStatistics(ctx context.Context) (*model.ReportStatistics, error)
 	RefreshToken(ctx context.Context) (string, error)
 	Logout(ctx context.Context) (string, error)
 }
@@ -217,6 +225,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Query.RefreshToken(childComplexity), true
 
+	case "Query.reportStatistics":
+		if e.complexity.Query.ReportStatistics == nil {
+			break
+		}
+
+		return e.complexity.Query.ReportStatistics(childComplexity), true
+
 	case "Query.reports":
 		if e.complexity.Query.Reports == nil {
 			break
@@ -279,6 +294,27 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Report.Title(childComplexity), true
+
+	case "ReportStatistics.errors":
+		if e.complexity.ReportStatistics.Errors == nil {
+			break
+		}
+
+		return e.complexity.ReportStatistics.Errors(childComplexity), true
+
+	case "ReportStatistics.normal":
+		if e.complexity.ReportStatistics.Normal == nil {
+			break
+		}
+
+		return e.complexity.ReportStatistics.Normal(childComplexity), true
+
+	case "ReportStatistics.warnings":
+		if e.complexity.ReportStatistics.Warnings == nil {
+			break
+		}
+
+		return e.complexity.ReportStatistics.Warnings(childComplexity), true
 
 	case "Subscription.videoUpdated":
 		if e.complexity.Subscription.VideoUpdated == nil {
@@ -412,10 +448,17 @@ type Report {
   isViewed: Boolean!
 }
 
+type ReportStatistics {
+  normal: Int!
+  warnings: Int!
+  errors: Int!
+}
+
 type Query {
   videos: [Video!]!
   reports: [Report!]!
   unviewedReportsCount: Int!
+  reportStatistics: ReportStatistics!
   refreshToken: String!
   logout: String!
 }
@@ -1033,6 +1076,41 @@ func (ec *executionContext) _Query_unviewedReportsCount(ctx context.Context, fie
 	return ec.marshalNInt2int(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _Query_reportStatistics(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   true,
+		IsResolver: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().ReportStatistics(rctx)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*model.ReportStatistics)
+	fc.Result = res
+	return ec.marshalNReportStatistics2ᚖsmart_intercom_apiᚋgraphᚋmodelᚐReportStatistics(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _Query_refreshToken(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -1382,6 +1460,111 @@ func (ec *executionContext) _Report_isViewed(ctx context.Context, field graphql.
 	res := resTmp.(bool)
 	fc.Result = res
 	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _ReportStatistics_normal(ctx context.Context, field graphql.CollectedField, obj *model.ReportStatistics) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "ReportStatistics",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Normal, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _ReportStatistics_warnings(ctx context.Context, field graphql.CollectedField, obj *model.ReportStatistics) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "ReportStatistics",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Warnings, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _ReportStatistics_errors(ctx context.Context, field graphql.CollectedField, obj *model.ReportStatistics) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "ReportStatistics",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Errors, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Subscription_videoUpdated(ctx context.Context, field graphql.CollectedField) (ret func() graphql.Marshaler) {
@@ -2986,6 +3169,20 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 				}
 				return res
 			})
+		case "reportStatistics":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_reportStatistics(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
+				return res
+			})
 		case "refreshToken":
 			field := field
 			out.Concurrently(i, func() (res graphql.Marshaler) {
@@ -3067,6 +3264,43 @@ func (ec *executionContext) _Report(ctx context.Context, sel ast.SelectionSet, o
 			}
 		case "isViewed":
 			out.Values[i] = ec._Report_isViewed(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
+var reportStatisticsImplementors = []string{"ReportStatistics"}
+
+func (ec *executionContext) _ReportStatistics(ctx context.Context, sel ast.SelectionSet, obj *model.ReportStatistics) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, reportStatisticsImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("ReportStatistics")
+		case "normal":
+			out.Values[i] = ec._ReportStatistics_normal(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "warnings":
+			out.Values[i] = ec._ReportStatistics_warnings(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "errors":
+			out.Values[i] = ec._ReportStatistics_errors(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
@@ -3512,6 +3746,20 @@ func (ec *executionContext) marshalNReport2ᚖsmart_intercom_apiᚋgraphᚋmodel
 		return graphql.Null
 	}
 	return ec._Report(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNReportStatistics2smart_intercom_apiᚋgraphᚋmodelᚐReportStatistics(ctx context.Context, sel ast.SelectionSet, v model.ReportStatistics) graphql.Marshaler {
+	return ec._ReportStatistics(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNReportStatistics2ᚖsmart_intercom_apiᚋgraphᚋmodelᚐReportStatistics(ctx context.Context, sel ast.SelectionSet, v *model.ReportStatistics) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	return ec._ReportStatistics(ctx, sel, v)
 }
 
 func (ec *executionContext) unmarshalNString2string(ctx context.Context, v interface{}) (string, error) {

@@ -14,10 +14,17 @@ type Report {
   isViewed: Boolean!
 }
 
+type ReportStatistics {
+  normal: Int!
+  warnings: Int!
+  errors: Int!
+}
+
 type Query {
   videos: [Video!]!
   reports: [Report!]!
   unviewedReportsCount: Int!
+  reportStatistics: ReportStatistics!
   refreshToken: String!
   logout: String!
 }

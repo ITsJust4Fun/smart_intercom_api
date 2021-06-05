@@ -9,6 +9,7 @@ import (
 	"smart_intercom_api/graph/model"
 	"smart_intercom_api/internal/login"
 	"smart_intercom_api/internal/report"
+	"smart_intercom_api/internal/statistics"
 	"smart_intercom_api/internal/videos"
 )
 
@@ -50,6 +51,10 @@ func (r *queryResolver) Reports(ctx context.Context) ([]*model.Report, error) {
 
 func (r *queryResolver) UnviewedReportsCount(ctx context.Context) (int, error) {
 	return report.UnviewedReportsCount(ctx)
+}
+
+func (r *queryResolver) ReportStatistics(ctx context.Context) (*model.ReportStatistics, error) {
+	return statistics.ReportStatisticsQuery(ctx)
 }
 
 func (r *queryResolver) RefreshToken(ctx context.Context) (string, error) {
