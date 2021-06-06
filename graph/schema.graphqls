@@ -20,10 +20,21 @@ type ReportStatistics {
   errors: Int!
 }
 
+type HardwareStatistics {
+  cpuUsage: Float!
+  freeRAM: Float!
+  usedRAM: Float!
+  totalRAM: Float!
+  freeHDD: Float!
+  usedHDD: Float!
+  totalHDD: Float!
+}
+
 type Query {
   videos: [Video!]!
   reports: [Report!]!
   unviewedReportsCount: Int!
+  hardwareStatistics: HardwareStatistics!
   reportStatistics: ReportStatistics!
   refreshToken: String!
   logout: String!

@@ -53,6 +53,10 @@ func (r *queryResolver) UnviewedReportsCount(ctx context.Context) (int, error) {
 	return report.UnviewedReportsCount(ctx)
 }
 
+func (r *queryResolver) HardwareStatistics(ctx context.Context) (*model.HardwareStatistics, error) {
+	return statistics.HardwareStatisticsQuery(ctx)
+}
+
 func (r *queryResolver) ReportStatistics(ctx context.Context) (*model.ReportStatistics, error) {
 	return statistics.ReportStatisticsQuery(ctx)
 }

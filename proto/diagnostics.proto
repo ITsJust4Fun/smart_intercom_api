@@ -1,0 +1,19 @@
+syntax = "proto3";
+
+option go_package = "./proto";
+
+service Diagnostics {
+  rpc GetDiagnostic(Empty) returns (Diagnostic) {}
+}
+
+message Empty {}
+
+message Diagnostic {
+  double cpu = 1;
+  double freeRAM = 2;
+  double usedRAM = 3;
+  double totalRAM = 4;
+  double freeHDD = 5;
+  double usedHDD = 6;
+  double totalHDD = 7;
+}

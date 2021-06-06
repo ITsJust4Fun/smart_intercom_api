@@ -2,6 +2,16 @@
 
 package model
 
+type HardwareStatistics struct {
+	CPUUsage float64 `json:"cpuUsage"`
+	FreeRAM  float64 `json:"freeRAM"`
+	UsedRAM  float64 `json:"usedRAM"`
+	TotalRAM float64 `json:"totalRAM"`
+	FreeHdd  float64 `json:"freeHDD"`
+	UsedHdd  float64 `json:"usedHDD"`
+	TotalHdd float64 `json:"totalHDD"`
+}
+
 type Login struct {
 	IsRemember bool   `json:"isRemember"`
 	Password   string `json:"password"`

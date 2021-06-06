@@ -45,6 +45,16 @@ type DirectiveRoot struct {
 }
 
 type ComplexityRoot struct {
+	HardwareStatistics struct {
+		CPUUsage func(childComplexity int) int
+		FreeHdd  func(childComplexity int) int
+		FreeRAM  func(childComplexity int) int
+		TotalHdd func(childComplexity int) int
+		TotalRAM func(childComplexity int) int
+		UsedHdd  func(childComplexity int) int
+		UsedRAM  func(childComplexity int) int
+	}
+
 	Mutation struct {
 		ChangePassword func(childComplexity int, input model.NewPassword) int
 		CreateReport   func(childComplexity int, input model.NewReport) int
@@ -56,6 +66,7 @@ type ComplexityRoot struct {
 	}
 
 	Query struct {
+		HardwareStatistics   func(childComplexity int) int
 		Logout               func(childComplexity int) int
 		RefreshToken         func(childComplexity int) int
 		ReportStatistics     func(childComplexity int) int
@@ -104,6 +115,7 @@ type QueryResolver interface {
 	Videos(ctx context.Context) ([]*model.Video, error)
 	Reports(ctx context.Context) ([]*model.Report, error)
 	UnviewedReportsCount(ctx context.Context) (int, error)
+	HardwareStatistics(ctx context.Context) (*model.HardwareStatistics, error)
 	ReportStatistics(ctx context.Context) (*model.ReportStatistics, error)
 	RefreshToken(ctx context.Context) (string, error)
 	Logout(ctx context.Context) (string, error)
@@ -126,6 +138,55 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 	ec := executionContext{nil, e}
 	_ = ec
 	switch typeName + "." + field {
+
+	case "HardwareStatistics.cpuUsage":
+		if e.complexity.HardwareStatistics.CPUUsage == nil {
+			break
+		}
+
+		return e.complexity.HardwareStatistics.CPUUsage(childComplexity), true
+
+	case "HardwareStatistics.freeHDD":
+		if e.complexity.HardwareStatistics.FreeHdd == nil {
+			break
+		}
+
+		return e.complexity.HardwareStatistics.FreeHdd(childComplexity), true
+
+	case "HardwareStatistics.freeRAM":
+		if e.complexity.HardwareStatistics.FreeRAM == nil {
+			break
+		}
+
+		return e.complexity.HardwareStatistics.FreeRAM(childComplexity), true
+
+	case "HardwareStatistics.totalHDD":
+		if e.complexity.HardwareStatistics.TotalHdd == nil {
+			break
+		}
+
+		return e.complexity.HardwareStatistics.TotalHdd(childComplexity), true
+
+	case "HardwareStatistics.totalRAM":
+		if e.complexity.HardwareStatistics.TotalRAM == nil {
+			break
+		}
+
+		return e.complexity.HardwareStatistics.TotalRAM(childComplexity), true
+
+	case "HardwareStatistics.usedHDD":
+		if e.complexity.HardwareStatistics.UsedHdd == nil {
+			break
+		}
+
+		return e.complexity.HardwareStatistics.UsedHdd(childComplexity), true
+
+	case "HardwareStatistics.usedRAM":
+		if e.complexity.HardwareStatistics.UsedRAM == nil {
+			break
+		}
+
+		return e.complexity.HardwareStatistics.UsedRAM(childComplexity), true
 
 	case "Mutation.changePassword":
 		if e.complexity.Mutation.ChangePassword == nil {
@@ -210,6 +271,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Mutation.ViewReport(childComplexity, args["input"].(model.ViewReport)), true
+
+	case "Query.hardwareStatistics":
+		if e.complexity.Query.HardwareStatistics == nil {
+			break
+		}
+
+		return e.complexity.Query.HardwareStatistics(childComplexity), true
 
 	case "Query.logout":
 		if e.complexity.Query.Logout == nil {
@@ -454,10 +522,21 @@ type ReportStatistics {
   errors: Int!
 }
 
+type HardwareStatistics {
+  cpuUsage: Float!
+  freeRAM: Float!
+  usedRAM: Float!
+  totalRAM: Float!
+  freeHDD: Float!
+  usedHDD: Float!
+  totalHDD: Float!
+}
+
 type Query {
   videos: [Video!]!
   reports: [Report!]!
   unviewedReportsCount: Int!
+  hardwareStatistics: HardwareStatistics!
   reportStatistics: ReportStatistics!
   refreshToken: String!
   logout: String!
@@ -676,6 +755,251 @@ func (ec *executionContext) field___Type_fields_args(ctx context.Context, rawArg
 // endregion ************************** directives.gotpl **************************
 
 // region    **************************** field.gotpl *****************************
+
+func (ec *executionContext) _HardwareStatistics_cpuUsage(ctx context.Context, field graphql.CollectedField, obj *model.HardwareStatistics) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "HardwareStatistics",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.CPUUsage, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(float64)
+	fc.Result = res
+	return ec.marshalNFloat2float64(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _HardwareStatistics_freeRAM(ctx context.Context, field graphql.CollectedField, obj *model.HardwareStatistics) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "HardwareStatistics",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.FreeRAM, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(float64)
+	fc.Result = res
+	return ec.marshalNFloat2float64(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _HardwareStatistics_usedRAM(ctx context.Context, field graphql.CollectedField, obj *model.HardwareStatistics) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "HardwareStatistics",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.UsedRAM, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(float64)
+	fc.Result = res
+	return ec.marshalNFloat2float64(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _HardwareStatistics_totalRAM(ctx context.Context, field graphql.CollectedField, obj *model.HardwareStatistics) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "HardwareStatistics",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.TotalRAM, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(float64)
+	fc.Result = res
+	return ec.marshalNFloat2float64(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _HardwareStatistics_freeHDD(ctx context.Context, field graphql.CollectedField, obj *model.HardwareStatistics) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "HardwareStatistics",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.FreeHdd, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(float64)
+	fc.Result = res
+	return ec.marshalNFloat2float64(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _HardwareStatistics_usedHDD(ctx context.Context, field graphql.CollectedField, obj *model.HardwareStatistics) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "HardwareStatistics",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.UsedHdd, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(float64)
+	fc.Result = res
+	return ec.marshalNFloat2float64(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _HardwareStatistics_totalHDD(ctx context.Context, field graphql.CollectedField, obj *model.HardwareStatistics) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "HardwareStatistics",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.TotalHdd, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(float64)
+	fc.Result = res
+	return ec.marshalNFloat2float64(ctx, field.Selections, res)
+}
 
 func (ec *executionContext) _Mutation_login(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	defer func() {
@@ -1074,6 +1398,41 @@ func (ec *executionContext) _Query_unviewedReportsCount(ctx context.Context, fie
 	res := resTmp.(int)
 	fc.Result = res
 	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Query_hardwareStatistics(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   true,
+		IsResolver: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().HardwareStatistics(rctx)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*model.HardwareStatistics)
+	fc.Result = res
+	return ec.marshalNHardwareStatistics2ᚖsmart_intercom_apiᚋgraphᚋmodelᚐHardwareStatistics(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Query_reportStatistics(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
@@ -3051,6 +3410,63 @@ func (ec *executionContext) unmarshalInputViewReport(ctx context.Context, obj in
 
 // region    **************************** object.gotpl ****************************
 
+var hardwareStatisticsImplementors = []string{"HardwareStatistics"}
+
+func (ec *executionContext) _HardwareStatistics(ctx context.Context, sel ast.SelectionSet, obj *model.HardwareStatistics) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, hardwareStatisticsImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("HardwareStatistics")
+		case "cpuUsage":
+			out.Values[i] = ec._HardwareStatistics_cpuUsage(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "freeRAM":
+			out.Values[i] = ec._HardwareStatistics_freeRAM(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "usedRAM":
+			out.Values[i] = ec._HardwareStatistics_usedRAM(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "totalRAM":
+			out.Values[i] = ec._HardwareStatistics_totalRAM(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "freeHDD":
+			out.Values[i] = ec._HardwareStatistics_freeHDD(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "usedHDD":
+			out.Values[i] = ec._HardwareStatistics_usedHDD(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "totalHDD":
+			out.Values[i] = ec._HardwareStatistics_totalHDD(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
 var mutationImplementors = []string{"Mutation"}
 
 func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet) graphql.Marshaler {
@@ -3164,6 +3580,20 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_unviewedReportsCount(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
+				return res
+			})
+		case "hardwareStatistics":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_hardwareStatistics(ctx, field)
 				if res == graphql.Null {
 					atomic.AddUint32(&invalids, 1)
 				}
@@ -3635,6 +4065,35 @@ func (ec *executionContext) marshalNBoolean2bool(ctx context.Context, sel ast.Se
 		}
 	}
 	return res
+}
+
+func (ec *executionContext) unmarshalNFloat2float64(ctx context.Context, v interface{}) (float64, error) {
+	res, err := graphql.UnmarshalFloat(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNFloat2float64(ctx context.Context, sel ast.SelectionSet, v float64) graphql.Marshaler {
+	res := graphql.MarshalFloat(v)
+	if res == graphql.Null {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "must not be null")
+		}
+	}
+	return res
+}
+
+func (ec *executionContext) marshalNHardwareStatistics2smart_intercom_apiᚋgraphᚋmodelᚐHardwareStatistics(ctx context.Context, sel ast.SelectionSet, v model.HardwareStatistics) graphql.Marshaler {
+	return ec._HardwareStatistics(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNHardwareStatistics2ᚖsmart_intercom_apiᚋgraphᚋmodelᚐHardwareStatistics(ctx context.Context, sel ast.SelectionSet, v *model.HardwareStatistics) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	return ec._HardwareStatistics(ctx, sel, v)
 }
 
 func (ec *executionContext) unmarshalNID2string(ctx context.Context, v interface{}) (string, error) {
