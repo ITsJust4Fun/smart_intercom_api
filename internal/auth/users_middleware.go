@@ -12,6 +12,10 @@ type LoginContext struct {
 	IsLogin        bool
 }
 
+type LoginPluginContext struct {
+	Id string
+}
+
 var authCtxKey = &contextKey{"auth"}
 
 type contextKey struct {
@@ -56,24 +60,53 @@ func Middleware() func(http.Handler) http.Handler {
 			}
 
 			tokenStr := splitToken[1]
-			err := jwt.ParseTokenForUser(tokenStr)
 
-			if err != nil {
-				http.Error(w, "Invalid token", http.StatusForbidden)
-				return
+			path := r.URL.Path
+
+			if path == "/api" {
+				err := jwt.ParseTokenForUser(tokenStr)
+
+				if err != nil {
+					http.Error(w, "Invalid token", http.StatusForbidden)
+					return
+				}
+
+				loginContext := LoginContext{
+					CookieAccess: &cookieAccess,
+					IsLogin: true,
+				}
+
+				ctx := context.WithValue(r.Context(), authCtxKey, &loginContext)
+				r = r.WithContext(ctx)
+			} else {
+				id, err := jwt.ParseTokenForPlugin(tokenStr)
+
+				if err != nil {
+					http.Error(w, "Invalid token", http.StatusForbidden)
+					return
+				}
+
+				loginPluginContext := LoginPluginContext{
+					Id: id,
+				}
+
+				ctx := context.WithValue(r.Context(), authCtxKey, &loginPluginContext)
+				r = r.WithContext(ctx)
 			}
-
-			loginContext := LoginContext{
-				CookieAccess: &cookieAccess,
-				IsLogin: true,
-			}
-
-			ctx := context.WithValue(r.Context(), authCtxKey, &loginContext)
-			r = r.WithContext(ctx)
 
 			next.ServeHTTP(w, r)
 		})
 	}
+}
+
+func GetLoginPluginState(ctx context.Context) string {
+	loginContext, _ := ctx.Value(authCtxKey).(*LoginPluginContext)
+
+	if loginContext == nil {
+		return ""
+	}
+
+	return loginContext.Id
 }
 
 func GetLoginState(ctx context.Context) bool {

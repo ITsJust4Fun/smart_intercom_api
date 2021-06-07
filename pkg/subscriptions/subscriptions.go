@@ -5,9 +5,5 @@ import (
 	"sync"
 )
 
-var VideoUpdatedObservers map[string]chan *model.Video
+var VideoUpdatedObservers = map[string]chan *model.Video{}
 var VideoUpdatedMutex sync.Mutex
-
-func Init() {
-	VideoUpdatedObservers = map[string]chan *model.Video{}
-}
